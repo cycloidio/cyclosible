@@ -1,0 +1,14 @@
+djangorestframework
+django
+mysqlclient
+django-rest-swagger
+colorlog
+ansible
+PyYAML
+django-celery
+tornado
+markdown
+django-guardian
+django-filter
+boto
+redis

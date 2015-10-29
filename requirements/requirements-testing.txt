@@ -1,0 +1,8 @@
+# PyTest for running the tests.
+pytest
+pytest-django
+coverage
+mock
+responses
+testfixtures
+tox
