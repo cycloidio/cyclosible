@@ -1,6 +1,10 @@
 Cyclosible
 ==========
 
+[![Build Status](https://travis-ci.org/cycloidio/cyclosible.svg)](https://travis-ci.org/cycloidio/cyclosible)
+[![Coverage Status](https://coveralls.io/repos/cycloidio/cyclosible/badge.svg?branch=master&service=github)](https://coveralls.io/github/cycloidio/cyclosible?branch=master)
+
+
 Cyclosible is a project backed by [Cycloid] in order to manage Ansible with a REST API.
 
 The goal of Cyclosible is to be a lightweight application opensourced as a free alternative to Ansible Tower.
