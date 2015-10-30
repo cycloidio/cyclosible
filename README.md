@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/cycloidio/cyclosible.png?label=ready&title=Ready)](https://waffle.io/cycloidio/cyclosible)
 Cyclosible
 ==========
 
