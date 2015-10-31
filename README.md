@@ -3,7 +3,7 @@ Cyclosible
 
 [![Build Status](https://travis-ci.org/cycloidio/cyclosible.svg)](https://travis-ci.org/cycloidio/cyclosible)
 [![Coverage Status](https://coveralls.io/repos/cycloidio/cyclosible/badge.svg?branch=master&service=github)](https://coveralls.io/github/cycloidio/cyclosible?branch=master)
-
+[![Stories in Ready](https://badge.waffle.io/cycloidio/cyclosible.png?label=ready&title=Ready)](https://waffle.io/cycloidio/cyclosible)
 
 Cyclosible is a project backed by [Cycloid] in order to manage Ansible with a REST API.
 
