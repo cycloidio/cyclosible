@@ -39,11 +39,16 @@ class PlaybookViewSet(viewsets.ModelViewSet):
             if request.user.has_perm('playbook.can_run_playbook', playbook):
                 serializer = RunPlaybookSerializer(data=request.data)
                 if serializer.is_valid():
-                    task_run_playbook.delay(playbook_name=playbook.name, user_name=request.user.username)
+                    task = task_run_playbook.delay(playbook_name=playbook.name, user_name=request.user.username)
                     return Response(
                         {
                             'status': 'Playbook has been launched',
-                            # 'task_id': task_run_playbook.id,
+                            'task_id': task.id,
+                            'websocket_url': 'ws://{server_name}:{server_port}/ws/{task_id}?subscribe-broadcast'.format(
+                                server_name=request.META.get('SERVER_NAME'),
+                                server_port=request.META.get('SERVER_PORT'),
+                                task_id=task.id
+                            ),
                         },
                         status=status.HTTP_201_CREATED
                     )

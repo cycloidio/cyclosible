@@ -6,9 +6,9 @@ colorlog
 ansible
 PyYAML
 django-celery
-tornado
 markdown
 django-guardian
 django-filter
 boto
 redis
+django-websocket-redis

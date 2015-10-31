@@ -3,7 +3,7 @@ from .models import Playbook
 from django.contrib.auth.models import User
 from celery.utils.log import get_task_logger
 from django.conf import settings
-from .callbacks import PlaybookCallbacks, PlaybookRunnerCallbacks
+from .callbacks_ansiblev1 import PlaybookCallbacks, PlaybookRunnerCallbacks
 from .models import PlaybookRunHistory
 import ansible.playbook
 import ansible.utils.template
@@ -18,9 +18,9 @@ logger = get_task_logger(__name__)
 
 @app.task(bind=True, name="Run a playbook")
 def run_playbook(self, playbook_name, user_name, s3_filename=None, only_tags=None, skip_tags=None, extra_vars=None):
-    tmpfile = tempfile.NamedTemporaryFile(mode='a+')
-    s3 = S3PlaybookLog(task_id=self.request.id)
-    url = s3.write_log(tmpfile=tmpfile)
+    self.tmpfile = tempfile.NamedTemporaryFile(mode='a+')
+    self.s3 = S3PlaybookLog(task_id=self.request.id)
+    url = self.s3.write_log(tmpfile=self.tmpfile)
     history = PlaybookRunHistory.objects.create(
         playbook=Playbook.objects.get(name=playbook_name),
         date_launched=timezone.now(),
@@ -30,9 +30,19 @@ def run_playbook(self, playbook_name, user_name, s3_filename=None, only_tags=Non
         log_url=url
     )
 
+    # Here, we override the default ansible callbacks to pass our customs parameters
     stats = callbacks.AggregateStats()
-    playbook_cb = PlaybookCallbacks(verbose=utils.VERBOSITY, tmpfile=tmpfile)
-    runner_cb = PlaybookRunnerCallbacks(stats, verbose=utils.VERBOSITY, tmpfile=tmpfile)
+    playbook_cb = PlaybookCallbacks(
+        verbose=utils.VERBOSITY,
+        task_id=self.request.id,
+        tmpfile=self.tmpfile
+    )
+    runner_cb = PlaybookRunnerCallbacks(
+        stats=stats,
+        verbose=utils.VERBOSITY,
+        task_id=self.request.id,
+        tmpfile=self.tmpfile
+    )
 
     pb = ansible.playbook.PlayBook(
         playbook=''.join([settings.PLAYBOOK_PATH, playbook_name, '.yml']),
@@ -53,16 +63,16 @@ def run_playbook(self, playbook_name, user_name, s3_filename=None, only_tags=Non
         history.date_finished = timezone.now()
         history.status = 'FAILED'
         history.save()
-        tmpfile.seek(0)
-        s3.write_log(tmpfile=tmpfile)
+        self.tmpfile.seek(0)
+        self.s3.write_log(tmpfile=self.tmpfile)
         print(u"ERROR: %s" % utils.unicode.to_unicode(errors.AnsibleError, nonstring='simplerepr'))
-        tmpfile.close()
+        self.tmpfile.close()
         return 1
 
     # Be kind, rewind
-    tmpfile.seek(0)
-    s3.write_log(tmpfile=tmpfile)
-    tmpfile.close()
+    self.tmpfile.seek(0)
+    self.s3.write_log(tmpfile=self.tmpfile)
+    self.tmpfile.close()
     history.date_finished = timezone.now()
     history.status = 'SUCCESS'
     history.save()

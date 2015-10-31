@@ -65,14 +65,24 @@ setup(
     license='Apache',
     description='Cyclosible is a web-api to manage ansible',
     author='Cycloid',
-    author_email='cyclosible@cycloid.io',  # SEE NOTE BELOW (*)
+    author_email='julien.syx@cycloid.io',  # SEE NOTE BELOW (*)
     packages=get_packages('cyclosible'),
     package_data=get_package_data('cyclosible'),
     install_requires=[
         'djangorestframework',
         'django>=1.8',
         'mysqlclient',
-        'django-rest-swagger'
+        'django-rest-swagger',
+        'colorlog',
+        'ansible',
+        'PyYAML',
+        'django-celery',
+        'markdown',
+        'django-guardian',
+        'django-filter',
+        'boto',
+        'redis',
+        'django-websocket-redis'
     ],
     zip_safe=False,
     classifiers=[
