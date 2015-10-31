@@ -86,6 +86,14 @@ def pytest_configure():
         CELERY_TIMEZONE='Europe/Paris',
         CELERY_ALWAYS_EAGER=True,
         TEST_RUNNER='djcelery.contrib.test_runner.CeleryTestSuiteRunner',
+        WS4REDIS_SUBSCRIBER='cyclosible.Cyclosible.websocket.WebSocketSubscriber',
+        WS4REDIS_PREFIX='ws',
+        WS4REDIS_EXPIRE=7200,
+        WS4REDIS_CONNECTION={
+            'host': 'localhost',
+            'port': 6379,
+            'db': 1,
+        }
     )
 
     try:

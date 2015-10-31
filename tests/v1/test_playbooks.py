@@ -5,6 +5,7 @@ from rest_framework.authtoken.models import Token
 from cyclosible.playbook.tasks import run_playbook as task_run_playbook
 from cyclosible.playbook.models import Playbook
 from guardian.shortcuts import assign_perm
+import celery
 import mock
 
 
@@ -136,6 +137,8 @@ class PlaybookTests(APITestCase):
         """
         Ensure we can run a playbook object with admin.
         """
+        # Setup mock
+        mock_task_run_playbook_delay.return_value = celery.result.AsyncResult(id='fake-id')
         url = '/api/v1/playbooks/%s/run/' % self.playbook.name
         data = {
             'only_tags': u'deploy',
@@ -151,6 +154,7 @@ class PlaybookTests(APITestCase):
         """
         Ensure we can run a playbook object with authorized user.
         """
+        mock_task_run_playbook_delay.return_value = celery.result.AsyncResult(id='fake-id')
         url = '/api/v1/playbooks/%s/run/' % self.playbook.name
         data = {
             'only_tags': u'deploy',

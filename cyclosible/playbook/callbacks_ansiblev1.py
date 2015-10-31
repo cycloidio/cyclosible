@@ -19,9 +19,9 @@ def display(msg, tmpfile, task_id, color=None, stderr=False, screen_only=False, 
     log_flock(runner)
     while msg.startswith("\n"):
         msg = msg.replace("\n", "")
-    msg2 = msg+'\n'
+    msg2 = msg + '\n'
     if color:
-        msg2 = stringc(msg, color)+'\n'
+        msg2 = stringc(msg, color) + '\n'
     tmpfile.write(msg2)
     # Pusblish the message on websocket
     redis_publisher = RedisPublisher(facility=task_id, broadcast=True)
