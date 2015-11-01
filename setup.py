@@ -100,9 +100,9 @@ setup(
         'Programming Language :: Python :: 3.4'
     ],
     entry_points={
-        'cyclosible.plugins': [
-            's3 = cyclosible.playbook.plugins.s3:S3Plugin',
-        ]
+        'cyclosible.plugins.storage': [
+            's3 = cyclosible.playbook.plugins.storage.s3:S3Plugin',
+        ],
     },
 )
 

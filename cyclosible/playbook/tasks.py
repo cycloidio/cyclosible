@@ -3,7 +3,7 @@ from .models import Playbook
 from django.contrib.auth.models import User
 from celery.utils.log import get_task_logger
 from django.conf import settings
-from .plugins.base import check_plugin_enabled
+from .plugins.storage.base import check_plugin_enabled
 from .callbacks_ansiblev1 import PlaybookCallbacks, PlaybookRunnerCallbacks
 from .models import PlaybookRunHistory
 from ansible import errors
@@ -21,7 +21,7 @@ logger = get_task_logger(__name__)
 def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None, extra_vars=None):
     """ This function will launch a playbook. To handle logging, it will
     use stevedore which will load all extensions registered under the
-    entrypoint cyclosible.plugins. For example, it will let Cyclosible
+    entrypoint cyclosible.plugins.storage. For example, it will let Cyclosible
     save his log on a file, on S3, or something else.
     :param playbook_name:
     :param user_name:
@@ -70,20 +70,20 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
         history.status = 'FAILED'
         logger.error(u"ERROR: %s" % utils.unicode.to_unicode(errors.AnsibleError, nonstring='simplerepr'))
 
-    self.mgr = enabled.EnabledExtensionManager(
-        namespace='cyclosible.plugins',
+    self.mgr_storage = enabled.EnabledExtensionManager(
+        namespace='cyclosible.plugins.storage',
         check_func=check_plugin_enabled,
         invoke_on_load=True,
         invoke_kwds={'task_id': self.request.id},
         verify_requirements=True
     )
 
-    logger.debug('LOADED PLUGINS: {plugins}'.format(plugins=', '.join(self.mgr.names())))
+    logger.debug('LOADED PLUGINS: {plugins}'.format(plugins=', '.join(self.mgr_storage.names())))
 
     try:
         list_urls = []
-        self.mgr.map(lambda ext: (ext.name, ext.obj.write_log()))
-        urls = self.mgr.map(lambda ext: (ext.name, ext.obj.get_url_log()))
+        self.mgr_storage.map(lambda ext: (ext.name, ext.obj.write_log()))
+        urls = self.mgr_storage.map(lambda ext: (ext.name, ext.obj.get_url_log()))
         for url in urls:
             try:
                 if url[1]:
