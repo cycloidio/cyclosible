@@ -3,45 +3,60 @@ from .models import Playbook
 from django.contrib.auth.models import User
 from celery.utils.log import get_task_logger
 from django.conf import settings
+from .plugins.base import check_plugin_enabled
 from .callbacks_ansiblev1 import PlaybookCallbacks, PlaybookRunnerCallbacks
 from .models import PlaybookRunHistory
-import ansible.playbook
-import ansible.utils.template
 from ansible import errors
 from ansible import callbacks
 from ansible import utils
-from .s3 import S3PlaybookLog
-import tempfile
 from django.utils import timezone
+from stevedore import enabled
+import ansible.playbook
+import ansible.utils.template
+import json
 logger = get_task_logger(__name__)
 
 
 @app.task(bind=True, name="Run a playbook")
-def run_playbook(self, playbook_name, user_name, s3_filename=None, only_tags=None, skip_tags=None, extra_vars=None):
-    self.tmpfile = tempfile.NamedTemporaryFile(mode='a+')
-    self.s3 = S3PlaybookLog(task_id=self.request.id)
-    url = self.s3.write_log(tmpfile=self.tmpfile)
+def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None, extra_vars=None):
+    """ This function will launch a playbook. To handle logging, it will
+    use stevedore which will load all extensions registered under the
+    entrypoint cyclosible.plugins. For example, it will let Cyclosible
+    save his log on a file, on S3, or something else.
+    :param playbook_name:
+    :param user_name:
+    :param only_tags:
+    :param skip_tags:
+    :param extra_vars:
+    :return:
+    """
+    self.mgr = enabled.EnabledExtensionManager(
+        namespace='cyclosible.plugins',
+        check_func=check_plugin_enabled,
+        invoke_on_load=True,
+        invoke_kwds={'task_id': self.request.id},
+        verify_requirements=True
+    )
+
+    logger.debug('LOADED PLUGINS: {plugins}'.format(plugins=', '.join(self.mgr.names())))
     history = PlaybookRunHistory.objects.create(
         playbook=Playbook.objects.get(name=playbook_name),
         date_launched=timezone.now(),
         status='RUNNING',
         task_id=self.request.id,
-        launched_by=User.objects.get(username=user_name),
-        log_url=url
+        launched_by=User.objects.get(username=user_name)
     )
 
     # Here, we override the default ansible callbacks to pass our customs parameters
     stats = callbacks.AggregateStats()
     playbook_cb = PlaybookCallbacks(
         verbose=utils.VERBOSITY,
-        task_id=self.request.id,
-        tmpfile=self.tmpfile
+        task_id=self.request.id
     )
     runner_cb = PlaybookRunnerCallbacks(
         stats=stats,
         verbose=utils.VERBOSITY,
-        task_id=self.request.id,
-        tmpfile=self.tmpfile
+        task_id=self.request.id
     )
 
     pb = ansible.playbook.PlayBook(
@@ -59,20 +74,20 @@ def run_playbook(self, playbook_name, user_name, s3_filename=None, only_tags=Non
         hosts = sorted(pb.stats.processed.keys())
         logger.info(hosts)
         playbook_cb.on_stats(pb.stats)
+        history.status = 'SUCCESS'
     except errors.AnsibleError:
-        history.date_finished = timezone.now()
         history.status = 'FAILED'
-        history.save()
-        self.tmpfile.seek(0)
-        self.s3.write_log(tmpfile=self.tmpfile)
-        print(u"ERROR: %s" % utils.unicode.to_unicode(errors.AnsibleError, nonstring='simplerepr'))
-        self.tmpfile.close()
-        return 1
+        logger.error(u"ERROR: %s" % utils.unicode.to_unicode(errors.AnsibleError, nonstring='simplerepr'))
 
-    # Be kind, rewind
-    self.tmpfile.seek(0)
-    self.s3.write_log(tmpfile=self.tmpfile)
-    self.tmpfile.close()
+    try:
+        urls = self.mgr.map(lambda ext: (ext.name, ext.obj.write_log()))
+        list_urls = []
+        for url in urls:
+            list_urls.append({url[0]: url[1]})
+        history.log_url = json.dumps(list_urls)
+    except RuntimeError:
+        logger.debug('No plugins available')
     history.date_finished = timezone.now()
-    history.status = 'SUCCESS'
     history.save()
+    if history.status == 'FAILED':
+        return 1

@@ -82,7 +82,8 @@ setup(
         'django-filter',
         'boto',
         'redis',
-        'django-websocket-redis'
+        'django-websocket-redis',
+        'stevedore'
     ],
     zip_safe=False,
     classifiers=[
@@ -97,7 +98,12 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4'
-    ]
+    ],
+    entry_points={
+        'cyclosible.plugins': [
+            's3 = cyclosible.playbook.plugins.s3:S3Plugin',
+        ]
+    },
 )
 
 # (*) Please direct queries to the discussion group, rather than to us directly
