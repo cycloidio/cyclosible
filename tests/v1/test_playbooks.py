@@ -3,8 +3,9 @@ from rest_framework.test import APITestCase
 from django.contrib.auth.models import User, Group
 from rest_framework.authtoken.models import Token
 from cyclosible.playbook.tasks import run_playbook as task_run_playbook
-from cyclosible.playbook.models import Playbook
+from cyclosible.playbook.models import Playbook, PlaybookRunHistory
 from guardian.shortcuts import assign_perm
+from django.utils import timezone
 import celery
 import mock
 
@@ -30,12 +31,20 @@ class PlaybookTests(APITestCase):
         assign_perm('playbook.can_override_skip_tags', self.group)
         assign_perm('playbook.can_override_only_tags', self.group)
 
-        # Create the playbook
-        self.playbook = Playbook.objects.create(name="test_playbook", skip_tags="base", only_tags="deploy", group=self.group)
-
         # Create an admin
         self.admin = User.objects.create_superuser('admin_playbook', 'myemail@test.com', 'cyclosible')
         self.admin_token = Token.objects.get(user__username='admin_playbook')
+
+        # Create the playbook
+        self.playbook = Playbook.objects.create(name="test_playbook", skip_tags="base", only_tags="deploy", group=self.group)
+
+        # Create the playbook history
+        self.playbookrunhistory = PlaybookRunHistory.objects.create(playbook=self.playbook,
+                                                                    date_launched=timezone.now(),
+                                                                    status='RUNNING',
+                                                                    task_id='fake task id',
+                                                                    launched_by=self.admin,
+                                                                    log_url='http://fake-url')
 
         # Assign permissions for authorized user
         assign_perm('playbook.can_run_playbook', self.user_authorized, self.playbook)
@@ -109,6 +118,15 @@ class PlaybookTests(APITestCase):
         Ensure we can get a playbook object with admin.
         """
         url = '/api/v1/playbooks/%s/' % self.playbook.name
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.admin_token.key)
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_v1_admin_get_playbook_history(self):
+        """
+        Ensure we can get a playbook history with admin.
+        """
+        url = '/api/v1/playbookrunhistorys/%i/' % self.playbookrunhistory.id
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.admin_token.key)
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
