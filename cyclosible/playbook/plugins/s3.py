@@ -15,5 +15,8 @@ class S3Plugin(PluginBase):
     def write_log(self):
         k = Key(self.bucket)
         k.key = self.s3_filename
-        k.set_contents_from_file(self.tmpfile)
-        return k.generate_url(expires_in=600, query_auth=False)
+        self.log_url = k.generate_url(expires_in=600, query_auth=False)
+        if k.set_contents_from_file(self.tmpfile):
+            return True
+        else:
+            return False

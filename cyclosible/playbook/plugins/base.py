@@ -19,7 +19,6 @@ class PluginBase(object):
     """Base class for Cyclosible plugin
     """
 
-    @abc.abstractmethod
     def __init__(self, task_id):
         self.redis_connection = Redis(connection_pool=ConnectionPool(**settings.WS4REDIS_CONNECTION))
         self.tmpfile = tempfile.NamedTemporaryFile(mode='a+')
@@ -27,9 +26,16 @@ class PluginBase(object):
             self.tmpfile.write(log)
         # Rewind the log file
         self.tmpfile.seek(0)
+        self.log_url = None
 
     @abc.abstractmethod
     def write_log(self):
         """Write the log somewhere.
-        :returns: Url of the log if possible, or at least a fake url.
+        :returns: Boolean. True if success, False if failure
         """
+
+    def get_url_log(self):
+        """Get the url of the log.
+        :returns: Url of the log. Can be empty
+        """
+        return self.log_url

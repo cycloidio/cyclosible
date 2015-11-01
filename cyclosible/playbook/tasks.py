@@ -30,15 +30,6 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
     :param extra_vars:
     :return:
     """
-    self.mgr = enabled.EnabledExtensionManager(
-        namespace='cyclosible.plugins',
-        check_func=check_plugin_enabled,
-        invoke_on_load=True,
-        invoke_kwds={'task_id': self.request.id},
-        verify_requirements=True
-    )
-
-    logger.debug('LOADED PLUGINS: {plugins}'.format(plugins=', '.join(self.mgr.names())))
     history = PlaybookRunHistory.objects.create(
         playbook=Playbook.objects.get(name=playbook_name),
         date_launched=timezone.now(),
@@ -79,11 +70,26 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
         history.status = 'FAILED'
         logger.error(u"ERROR: %s" % utils.unicode.to_unicode(errors.AnsibleError, nonstring='simplerepr'))
 
+    self.mgr = enabled.EnabledExtensionManager(
+        namespace='cyclosible.plugins',
+        check_func=check_plugin_enabled,
+        invoke_on_load=True,
+        invoke_kwds={'task_id': self.request.id},
+        verify_requirements=True
+    )
+
+    logger.debug('LOADED PLUGINS: {plugins}'.format(plugins=', '.join(self.mgr.names())))
+
     try:
-        urls = self.mgr.map(lambda ext: (ext.name, ext.obj.write_log()))
         list_urls = []
+        self.mgr.map(lambda ext: (ext.name, ext.obj.write_log()))
+        urls = self.mgr.map(lambda ext: (ext.name, ext.obj.get_url_log()))
         for url in urls:
-            list_urls.append({url[0]: url[1]})
+            try:
+                if url[1]:
+                    list_urls.append({url[0]: url[1]})
+            except IndexError:
+                logger.debug('Index does not exist in the url returned')
         history.log_url = json.dumps(list_urls)
     except RuntimeError:
         logger.debug('No plugins available')
