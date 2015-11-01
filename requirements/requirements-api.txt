@@ -12,3 +12,4 @@ django-filter
 boto
 redis
 django-websocket-redis
+stevedore

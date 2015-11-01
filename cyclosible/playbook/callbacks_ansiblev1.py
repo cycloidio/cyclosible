@@ -1,9 +1,5 @@
 from ansible import utils
-import sys
-import getpass
-import fnmatch
 from ansible import constants
-import locale
 from ansible.module_utils import basic
 from ansible.utils.unicode import to_unicode, to_bytes
 from ansible.callbacks import (DefaultRunnerCallbacks, call_callback_module, banner, log_flock, log_unflock)
@@ -12,9 +8,17 @@ from ws4redis.publisher import RedisPublisher
 from ws4redis.redis_store import RedisMessage
 from django.conf import settings
 from redis import Redis, ConnectionPool
+import logging
+import sys
+import getpass
+import fnmatch
+import locale
+
+redis_connection = Redis(connection_pool=ConnectionPool(**settings.WS4REDIS_CONNECTION))
+logger = logging.getLogger(__name__)
 
 
-def display(msg, tmpfile, task_id, color=None, stderr=False, screen_only=False, log_only=False, runner=None):
+def display(msg, task_id, color=None, stderr=False, screen_only=False, log_only=False, runner=None):
     # prevent a very rare case of interlaced multiprocess I/O
     log_flock(runner)
     while msg.startswith("\n"):
@@ -22,7 +26,9 @@ def display(msg, tmpfile, task_id, color=None, stderr=False, screen_only=False, 
     msg2 = msg + '\n'
     if color:
         msg2 = stringc(msg, color) + '\n'
-    tmpfile.write(msg2)
+
+    logger.debug('TASK_ID: {task_id} | MSG: {message}'.format(task_id=task_id, message=msg2))
+
     # Pusblish the message on websocket
     redis_publisher = RedisPublisher(facility=task_id, broadcast=True)
     redis_message = RedisMessage(msg2)
@@ -30,24 +36,24 @@ def display(msg, tmpfile, task_id, color=None, stderr=False, screen_only=False, 
 
     # Store the message into a redis list to let the user get all
     # history of the logs
-    redis_connection = Redis(connection_pool=ConnectionPool(**settings.WS4REDIS_CONNECTION))
     redis_connection.rpush('tasks:' + task_id, msg2)
+    # reset the expire of the list
     if settings.WS4REDIS_EXPIRE:
         if settings.WS4REDIS_EXPIRE > 0:
-            redis_connection.expire('tasks:' + task_id, settings.WS4REDIS_EXPIRE)
+            redis_connection.expire('tasks:' + task_id,
+                                    settings.WS4REDIS_EXPIRE)
     log_unflock(runner)
 
 
 class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
     """ callbacks used for Runner() from /usr/bin/ansible-playbook """
 
-    def __init__(self, stats, tmpfile, task_id, verbose=None):
+    def __init__(self, stats, task_id, verbose=None):
 
         if verbose is None:
             verbose = utils.VERBOSITY
 
         self.task_id = task_id
-        self.tmpfile = tmpfile
         self.verbose = verbose
         self.stats = stats
         self._async_notified = {}
@@ -70,7 +76,7 @@ class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
             msg = "fatal: [%s] => (item=%s) => %s" % (host, item, results)
         else:
             msg = "fatal: [%s] => %s" % (host, results)
-        display(msg, color='red', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+        display(msg, color='red', runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_unreachable(host, results)
 
     def on_failed(self, host, results, ignore_errors=False):
@@ -93,18 +99,18 @@ class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
             msg = "failed: [%s] => (item=%s) => %s" % (host, item, utils.jsonify(results2))
         else:
             msg = "failed: [%s] => %s" % (host, utils.jsonify(results2))
-        display(msg, color='red', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+        display(msg, color='red', runner=self.runner, task_id=self.task_id)
 
         if stderr:
-            display("stderr: %s" % stderr, color='red', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display("stderr: %s" % stderr, color='red', runner=self.runner, task_id=self.task_id)
         if stdout:
-            display("stdout: %s" % stdout, color='red', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display("stdout: %s" % stdout, color='red', runner=self.runner, task_id=self.task_id)
         if returned_msg:
-            display("msg: %s" % returned_msg, color='red', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display("msg: %s" % returned_msg, color='red', runner=self.runner, task_id=self.task_id)
         if not parsed and module_msg:
-            display(module_msg, color='red', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display(module_msg, color='red', runner=self.runner, task_id=self.task_id)
         if ignore_errors:
-            display("...ignoring", color='cyan', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display("...ignoring", color='cyan', runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_failed(host, results, ignore_errors=ignore_errors)
 
     def on_ok(self, host, host_result):
@@ -141,12 +147,12 @@ class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
 
         if msg != '':
             if not changed:
-                display(msg, color='green', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+                display(msg, color='green', runner=self.runner, task_id=self.task_id)
             else:
-                display(msg, color='yellow', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+                display(msg, color='yellow', runner=self.runner, task_id=self.task_id)
         if constants.COMMAND_WARNINGS and 'warnings' in host_result2 and host_result2['warnings']:
             for warning in host_result2['warnings']:
-                display("warning: %s" % warning, color='purple', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+                display("warning: %s" % warning, color='purple', runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_ok(host, host_result)
 
     def on_skipped(self, host, item=None):
@@ -159,12 +165,12 @@ class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
                 msg = "skipping: [%s] => (item=%s)" % (host, item)
             else:
                 msg = "skipping: [%s]" % host
-            display(msg, color='cyan', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display(msg, color='cyan', runner=self.runner, task_id=self.task_id)
             super(PlaybookRunnerCallbacks, self).on_skipped(host, item)
 
     def on_no_hosts(self):
         display("FATAL: no hosts matched or all hosts have already failed -- aborting\n", color='red',
-                runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+                runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_no_hosts()
 
     def on_async_poll(self, host, res, jid, clock):
@@ -173,31 +179,30 @@ class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
         if self._async_notified[jid] > clock:
             self._async_notified[jid] = clock
             msg = "<job %s> polling, %ss remaining" % (jid, clock)
-            display(msg, color='cyan', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display(msg, color='cyan', runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_async_poll(host, res, jid, clock)
 
     def on_async_ok(self, host, res, jid):
         if jid:
             msg = "<job %s> finished on %s" % (jid, host)
-            display(msg, color='cyan', runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+            display(msg, color='cyan', runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_async_ok(host, res, jid)
 
     def on_async_failed(self, host, res, jid):
         msg = "<job %s> FAILED on %s" % (jid, host)
-        display(msg, color='red', stderr=True, runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+        display(msg, color='red', stderr=True, runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_async_failed(host, res, jid)
 
     def on_file_diff(self, host, diff):
-        display(utils.get_diff(diff), runner=self.runner, task_id=self.task_id, tmpfile=self.tmpfile)
+        display(utils.get_diff(diff), runner=self.runner, task_id=self.task_id)
         super(PlaybookRunnerCallbacks, self).on_file_diff(host, diff)
 
 
 class PlaybookCallbacks(object):
     """ playbook.py callbacks used by /usr/bin/ansible-playbook """
 
-    def __init__(self, task_id, tmpfile, verbose=False):
+    def __init__(self, task_id, verbose=False):
         self.task_id = task_id
-        self.tmpfile = tmpfile
         self.verbose = verbose
 
     def on_start(self):
@@ -207,11 +212,11 @@ class PlaybookCallbacks(object):
         call_callback_module('playbook_on_notify', host, handler)
 
     def on_no_hosts_matched(self):
-        display("skipping: no hosts matched", color='cyan', task_id=self.task_id, tmpfile=self.tmpfile)
+        display("skipping: no hosts matched", color='cyan', task_id=self.task_id)
         call_callback_module('playbook_on_no_hosts_matched')
 
     def on_no_hosts_remaining(self):
-        display("\nFATAL: all hosts have already failed -- aborting", color='red', task_id=self.task_id, tmpfile=self.tmpfile)
+        display("\nFATAL: all hosts have already failed -- aborting", color='red', task_id=self.task_id)
         call_callback_module('playbook_on_no_hosts_remaining')
 
     def on_task_start(self, name, is_conditional):
@@ -244,16 +249,16 @@ class PlaybookCallbacks(object):
             resp = raw_input(msg)
             if resp.lower() in ['y', 'yes']:
                 self.skip_task = False
-                display(banner(msg), task_id=self.task_id, tmpfile=self.tmpfile)
+                display(banner(msg), task_id=self.task_id)
             elif resp.lower() in ['c', 'continue']:
                 self.skip_task = False
                 self.step = False
-                display(banner(msg), task_id=self.task_id, tmpfile=self.tmpfile)
+                display(banner(msg), task_id=self.task_id)
             else:
                 self.skip_task = True
         else:
             self.skip_task = False
-            display(banner(msg), task_id=self.task_id, tmpfile=self.tmpfile)
+            display(banner(msg), task_id=self.task_id)
 
         call_callback_module('playbook_on_task_start', name, is_conditional)
 
@@ -285,7 +290,7 @@ class PlaybookCallbacks(object):
                 second = do_prompt("confirm " + msg, private)
                 if result == second:
                     break
-                display("***** VALUES ENTERED DO NOT MATCH ****", task_id=self.task_id, tmpfile=self.tmpfile)
+                display("***** VALUES ENTERED DO NOT MATCH ****", task_id=self.task_id)
         else:
             result = do_prompt(msg, private)
 
@@ -305,21 +310,21 @@ class PlaybookCallbacks(object):
         return result
 
     def on_setup(self):
-        display(banner("GATHERING FACTS"), task_id=self.task_id, tmpfile=self.tmpfile)
+        display(banner("GATHERING FACTS"), task_id=self.task_id)
         call_callback_module('playbook_on_setup')
 
     def on_import_for_host(self, host, imported_file):
         msg = "%s: importing %s" % (host, imported_file)
-        display(msg, color='cyan', task_id=self.task_id, tmpfile=self.tmpfile)
+        display(msg, color='cyan', task_id=self.task_id)
         call_callback_module('playbook_on_import_for_host', host, imported_file)
 
     def on_not_import_for_host(self, host, missing_file):
         msg = "%s: not importing file: %s" % (host, missing_file)
-        display(msg, color='cyan', task_id=self.task_id, tmpfile=self.tmpfile)
+        display(msg, color='cyan', task_id=self.task_id)
         call_callback_module('playbook_on_not_import_for_host', host, missing_file)
 
     def on_play_start(self, name):
-        display(banner("PLAY [%s]" % name), task_id=self.task_id, tmpfile=self.tmpfile)
+        display(banner("PLAY [%s]" % name), task_id=self.task_id)
         call_callback_module('playbook_on_play_start', name)
 
     def on_stats(self, stats):
