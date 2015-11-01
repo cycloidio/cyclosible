@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -83,7 +83,8 @@ SWAGGER_SETTINGS = {
     'permission_denied_handler': 'cyclosible.Cyclosible.views.permission_denied_handler',
 }
 
-WSGI_APPLICATION = 'cyclosible.Cyclosible.wsgi.application'
+WSGI_APPLICATION = 'ws4redis.django_runserver.application'
+WEBSOCKET_URL = '/ws/'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
@@ -160,3 +161,6 @@ PLUGINS_ENABLED = ['s3']
 S3_BUCKET = "cycloid-cyclosible"
 S3_ACCESS_KEY = "XXXXXXXXXXX"
 S3_SECRET_KEY = "XXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+if 'CYCLOSIBLE_CONFIG' in os.environ:
+    execfile(os.environ['CYCLOSIBLE_CONFIG'])
