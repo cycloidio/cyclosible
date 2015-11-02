@@ -1,19 +1,20 @@
-from ..Cyclosible.celery import app
-from .models import Playbook
 from django.contrib.auth.models import User
 from celery.utils.log import get_task_logger
 from django.conf import settings
+from django.utils import timezone
+from stevedore import enabled, driver
+from ..Cyclosible.celery import app
+from .models import Playbook
 from .plugins.storage.base import check_plugin_enabled
 from .callbacks_ansiblev1 import PlaybookCallbacks, PlaybookRunnerCallbacks
 from .models import PlaybookRunHistory
 from ansible import errors
 from ansible import callbacks
 from ansible import utils
-from django.utils import timezone
-from stevedore import enabled
+import json
 import ansible.playbook
 import ansible.utils.template
-import json
+
 logger = get_task_logger(__name__)
 
 
@@ -38,6 +39,23 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
         launched_by=User.objects.get(username=user_name)
     )
 
+    vault_password = None
+    if settings.VAULT_ENABLED:
+        try:
+            self.mgr_vault = driver.DriverManager(
+                namespace='cyclosible.plugins.vault',
+                name=settings.VAULT_ENABLED,
+                invoke_on_load=True,
+            )
+            vault_password = self.mgr_vault.driver.get_password()
+        except RuntimeError as e:
+            logger.error(e)
+
+        logger.debug('LOADED VAULT: {plugins} | Status: {status}'.format(
+            plugins=settings.VAULT_ENABLED,
+            status='OK' if vault_password else 'KO'
+        ))
+
     # Here, we override the default ansible callbacks to pass our customs parameters
     stats = callbacks.AggregateStats()
     playbook_cb = PlaybookCallbacks(
@@ -58,6 +76,7 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
         extra_vars=extra_vars,
         only_tags=only_tags,
         skip_tags=skip_tags,
+        vault_password=vault_password
     )
 
     try:
@@ -66,19 +85,22 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
         logger.info(hosts)
         playbook_cb.on_stats(pb.stats)
         history.status = 'SUCCESS'
-    except errors.AnsibleError:
+    except errors.AnsibleError as e:
         history.status = 'FAILED'
-        logger.error(u"ERROR: %s" % errors.AnsibleError)
+        logger.error(u"ERROR: %s" % e)
 
-    self.mgr_storage = enabled.EnabledExtensionManager(
-        namespace='cyclosible.plugins.storage',
-        check_func=check_plugin_enabled,
-        invoke_on_load=True,
-        invoke_kwds={'task_id': self.request.id},
-        verify_requirements=True
-    )
+    try:
+        self.mgr_storage = enabled.EnabledExtensionManager(
+            namespace='cyclosible.plugins.storage',
+            check_func=check_plugin_enabled,
+            invoke_on_load=True,
+            invoke_kwds={'task_id': self.request.id},
+            verify_requirements=True
+        )
 
-    logger.debug('LOADED PLUGINS: {plugins}'.format(plugins=', '.join(self.mgr_storage.names())))
+        logger.debug('LOADED STORAGE: {plugins}'.format(plugins=', '.join(self.mgr_storage.names())))
+    except RuntimeError as e:
+        logger.error(e)
 
     try:
         list_urls = []

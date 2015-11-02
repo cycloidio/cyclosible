@@ -156,7 +156,26 @@ SECRET_KEY = 'll=1_7y5i4e!5)@g+25ouhhz2kru6d=15twq5c)faerhj5x^@9'
 # Trailing slash is needed here
 PLAYBOOK_PATH = "/home/<playbook-path>/"
 
-PLUGINS_ENABLED = ['s3']
+STORAGE_ENABLED = ['s3']
+
+# Can be 'password', 'file' or 'hashicorp'.
+# The hashicorp plugin will request the password in hashicorp's vault
+# Let this variable to None to disable vault password
+# Uncomment VAULT_* variables to configure the plugins
+# As it's a python file, you can also use os.environ to get the
+# value from your environment
+
+VAULT_ENABLED = None
+# VAULT_PASSWORD = "XXXXXXXX"
+# VAULT_FILE = "/home/<vault_password_path>"
+# VAULT_HASHICORP = {
+#     'scheme': 'https',
+#     'host': 'vault.company.com',
+#     'port': 8200,
+#     'token': 'xxxxxxxxxxxxxxxxx',
+#     'secret_path': 'cycloid/ansible',
+#     'secret_field': 'value'
+# }
 
 S3_BUCKET = "cycloid-cyclosible"
 S3_ACCESS_KEY = "XXXXXXXXXXX"

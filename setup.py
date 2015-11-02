@@ -106,6 +106,11 @@ setup(
         'cyclosible.plugins.storage': [
             's3 = cyclosible.playbook.plugins.storage.s3:S3Plugin',
         ],
+        'cyclosible.plugins.vault': [
+            'password = cyclosible.playbook.plugins.vault.password:PasswordPlugin',
+            'file = cyclosible.playbook.plugins.vault.file:FilePlugin',
+            'hashicorp = cyclosible.playbook.plugins.vault.hashicorp:HashicorpPlugin',
+        ],
     },
 )
 
