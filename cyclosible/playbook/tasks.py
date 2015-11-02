@@ -1,20 +1,19 @@
-import json
-
 from django.contrib.auth.models import User
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
 from stevedore import enabled, driver
-import ansible.playbook
-import ansible.utils.template
 from ..Cyclosible.celery import app
 from .models import Playbook
 from .plugins.storage.base import check_plugin_enabled
-from cyclosible.playbook.callbacks_ansiblev1 import PlaybookCallbacks, PlaybookRunnerCallbacks
+from .callbacks_ansiblev1 import PlaybookCallbacks, PlaybookRunnerCallbacks
 from .models import PlaybookRunHistory
 from ansible import errors
 from ansible import callbacks
 from ansible import utils
+import json
+import ansible.playbook
+import ansible.utils.template
 
 logger = get_task_logger(__name__)
 
@@ -51,6 +50,11 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
             vault_password = self.mgr_vault.driver.get_password()
         except RuntimeError as e:
             logger.error(e)
+
+        logger.debug('LOADED VAULT: {plugins} | Status: {status}'.format(
+            plugins=settings.VAULT_ENABLED,
+            status='OK' if vault_password else 'KO'
+        ))
 
     # Here, we override the default ansible callbacks to pass our customs parameters
     stats = callbacks.AggregateStats()
