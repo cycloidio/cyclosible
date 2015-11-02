@@ -27,7 +27,6 @@ def display(msg, task_id, color=None, stderr=False, screen_only=False, log_only=
     if color:
         msg2 = stringc(msg, color) + '\n'
 
-    print msg2
     logger.debug('TASK_ID: {task_id} | MSG: {message}'.format(task_id=task_id, message=msg2))
 
     # Pusblish the message on websocket
