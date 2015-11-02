@@ -206,6 +206,25 @@ class PlaybookTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    @mock.patch.object(task_run_playbook, 'delay')
+    def test_v1_user_authorized_run_playbook_default_values(self, mock_task_run_playbook_delay):
+        """
+        Ensure we can run a playbook object with authorized user with default values
+        """
+        mock_task_run_playbook_delay.return_value = celery.result.AsyncResult(id='fake-id')
+        url = '/api/v1/playbooks/%s/run/' % self.playbook.name
+        data = {}
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_authorized_token.key)
+        response = self.client.post(url, data, format='json')
+        mock_task_run_playbook_delay.assert_called_once_with(
+            playbook_name=self.playbook.name,
+            user_name=u'user_authorized_playbook',
+            only_tags=[self.playbook.only_tags],
+            skip_tags=[self.playbook.skip_tags],
+            extra_vars={u'env': u'test'}
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_v1_user_not_authorized_run_playbook(self):
         """
         Ensure we can't run a playbook object with an unauthorized user.
