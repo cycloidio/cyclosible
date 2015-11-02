@@ -53,7 +53,8 @@ class PlaybookViewSet(viewsets.ModelViewSet):
                                 status=status.HTTP_403_FORBIDDEN
                             )
                     else:
-                        only_tags = playbook.only_tags.split(',')
+                        if playbook.only_tags:
+                            only_tags = playbook.only_tags.split(',')
 
                     if 'skip_tags' in serializer.validated_data:
                         if request.user.has_perm('playbook.can_override_skip_tags', playbook):
@@ -64,7 +65,8 @@ class PlaybookViewSet(viewsets.ModelViewSet):
                                 status=status.HTTP_403_FORBIDDEN
                             )
                     else:
-                        skip_tags = playbook.skip_tags.split(',')
+                        if playbook.skip_tags:
+                            skip_tags = playbook.skip_tags.split(',')
 
                     if 'extra_vars' in serializer.validated_data:
                         if request.user.has_perm('playbook.can_override_extra_vars', playbook):
@@ -78,10 +80,11 @@ class PlaybookViewSet(viewsets.ModelViewSet):
                                 status=status.HTTP_403_FORBIDDEN
                             )
                     else:
-                        extra_vars = {}
-                        for var in playbook.extra_vars.split(','):
-                            extra = var.split('=')
-                            extra_vars[extra[0]] = extra[1]
+                        if playbook.extra_vars:
+                            extra_vars = {}
+                            for var in playbook.extra_vars.split(','):
+                                extra = var.split('=')
+                                extra_vars[extra[0]] = extra[1]
 
                     # Launch the playbook
                     task = task_run_playbook.delay(

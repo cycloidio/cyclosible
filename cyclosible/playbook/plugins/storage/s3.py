@@ -1,10 +1,10 @@
-from .base import PluginBase
+from .base import StorageBase
 from django.conf import settings
 from boto.s3.key import Key
 import boto
 
 
-class S3Plugin(PluginBase):
+class S3Plugin(StorageBase):
     def __init__(self, task_id):
         super(S3Plugin, self).__init__(task_id)
         self.s3_connection = boto.connect_s3(aws_access_key_id=settings.S3_ACCESS_KEY,

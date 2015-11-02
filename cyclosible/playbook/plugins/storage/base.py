@@ -8,14 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 def check_plugin_enabled(plugin):
-    if plugin.name in settings.PLUGINS_ENABLED:
+    if plugin.name in settings.STORAGE_ENABLED:
         return True
     else:
         return False
 
 
 @six.add_metaclass(abc.ABCMeta)
-class PluginBase(object):
+class StorageBase(object):
     """Base class for Cyclosible plugin
     """
 

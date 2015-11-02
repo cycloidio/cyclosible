@@ -1,1 +1,2 @@
-# Optional packages which may be used with REST framework.
+# Optional packages used for plugins
+hvac
