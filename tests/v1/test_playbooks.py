@@ -4,7 +4,7 @@ from django.contrib.auth.models import User, Group
 from rest_framework.authtoken.models import Token
 from cyclosible.playbook.tasks import run_playbook as task_run_playbook
 from cyclosible.playbook.models import Playbook, PlaybookRunHistory
-from guardian.shortcuts import assign_perm
+from guardian.shortcuts import assign_perm, remove_perm
 from django.utils import timezone
 import celery
 import mock
@@ -30,13 +30,18 @@ class PlaybookTests(APITestCase):
         assign_perm('playbook.view_playbook', self.group)
         assign_perm('playbook.can_override_skip_tags', self.group)
         assign_perm('playbook.can_override_only_tags', self.group)
+        assign_perm('playbook.can_override_extra_vars', self.group)
 
         # Create an admin
         self.admin = User.objects.create_superuser('admin_playbook', 'myemail@test.com', 'cyclosible')
         self.admin_token = Token.objects.get(user__username='admin_playbook')
 
         # Create the playbook
-        self.playbook = Playbook.objects.create(name="test_playbook", skip_tags="base", only_tags="deploy", group=self.group)
+        self.playbook = Playbook.objects.create(name="test_playbook",
+                                                skip_tags="base",
+                                                only_tags="deploy",
+                                                extra_vars="env=test",
+                                                group=self.group)
 
         # Create the playbook history
         self.playbookrunhistory = PlaybookRunHistory.objects.create(playbook=self.playbook,
@@ -51,6 +56,7 @@ class PlaybookTests(APITestCase):
         assign_perm('playbook.view_playbook', self.user_authorized, self.playbook)
         assign_perm('playbook.can_override_skip_tags', self.user_authorized, self.playbook)
         assign_perm('playbook.can_override_only_tags', self.user_authorized, self.playbook)
+        assign_perm('playbook.can_override_extra_vars', self.user_authorized, self.playbook)
 
     def test_v1_create_playbook_not_authorized(self):
         """
@@ -75,6 +81,7 @@ class PlaybookTests(APITestCase):
             'name': u'testplaybook',
             'only_tags': u'deploy',
             'skip_tags': u'base',
+            'extra_vars': u'env=test',
             'group': {'name': 'playbook_group'}
         }
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_not_authorized_token.key)
@@ -90,6 +97,7 @@ class PlaybookTests(APITestCase):
             'name': u'testplaybook',
             'only_tags': u'deploy',
             'skip_tags': u'base',
+            'extra_vars': u'env=test',
             'group': {'name': 'test_group_not_exist_playbook'}
         }
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.admin_token.key)
@@ -106,6 +114,7 @@ class PlaybookTests(APITestCase):
             'name': u'testplaybook',
             'only_tags': u'deploy',
             'skip_tags': u'base',
+            'extra_vars': u'env=test',
             'group': {'name': 'test_group_playbook'}
         }
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.admin_token.key)
@@ -160,11 +169,18 @@ class PlaybookTests(APITestCase):
         url = '/api/v1/playbooks/%s/run/' % self.playbook.name
         data = {
             'only_tags': u'deploy',
-            'skip_tags': u'base'
+            'skip_tags': u'base',
+            'extra_vars': u'env=test',
         }
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.admin_token.key)
         response = self.client.post(url, data, format='json')
-        mock_task_run_playbook_delay.assert_called_once_with(playbook_name=self.playbook.name, user_name=u'admin_playbook')
+        mock_task_run_playbook_delay.assert_called_once_with(
+            playbook_name=self.playbook.name,
+            user_name=u'admin_playbook',
+            only_tags=[data.get('only_tags')],
+            skip_tags=[data.get('skip_tags')],
+            extra_vars={u'env': u'test'}
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     @mock.patch.object(task_run_playbook, 'delay')
@@ -176,11 +192,18 @@ class PlaybookTests(APITestCase):
         url = '/api/v1/playbooks/%s/run/' % self.playbook.name
         data = {
             'only_tags': u'deploy',
-            'skip_tags': u'base'
+            'skip_tags': u'base',
+            'extra_vars': u'env=test',
         }
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_authorized_token.key)
         response = self.client.post(url, data, format='json')
-        mock_task_run_playbook_delay.assert_called_once_with(playbook_name=self.playbook.name, user_name=u'user_authorized_playbook')
+        mock_task_run_playbook_delay.assert_called_once_with(
+            playbook_name=self.playbook.name,
+            user_name=u'user_authorized_playbook',
+            only_tags=[data.get('only_tags')],
+            skip_tags=[data.get('skip_tags')],
+            extra_vars={u'env': u'test'}
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_v1_user_not_authorized_run_playbook(self):
@@ -195,3 +218,39 @@ class PlaybookTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_not_authorized_token.key)
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @mock.patch.object(task_run_playbook, 'delay')
+    def test_v1_user_not_authorized_run_playbook_tags(self, mock_task_run_playbook_delay):
+        """
+        Ensure an unauthorized user can't override tags.
+        """
+        mock_task_run_playbook_delay.return_value = celery.result.AsyncResult(id='fake-id')
+        url = '/api/v1/playbooks/%s/run/' % self.playbook.name
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_authorized_token.key)
+
+        # Testing only tags permission
+        remove_perm('playbook.can_override_only_tags', self.user_authorized, self.playbook)
+        data = {
+            'only_tags': u'deploy,test',
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        assign_perm('playbook.can_override_only_tags', self.user_authorized, self.playbook)
+
+        # Testing skip tags permission
+        remove_perm('playbook.can_override_skip_tags', self.user_authorized, self.playbook)
+        data = {
+            'skip_tags': u'base,test',
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        assign_perm('playbook.can_override_skip_tags', self.user_authorized, self.playbook)
+
+        # Testing skip tags permission
+        remove_perm('playbook.can_override_extra_vars', self.user_authorized, self.playbook)
+        data = {
+            'extra_vars': u'env=test',
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        assign_perm('playbook.can_override_extra_vars', self.user_authorized, self.playbook)

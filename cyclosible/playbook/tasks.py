@@ -68,7 +68,7 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
         history.status = 'SUCCESS'
     except errors.AnsibleError:
         history.status = 'FAILED'
-        logger.error(u"ERROR: %s" % utils.unicode.to_unicode(errors.AnsibleError, nonstring='simplerepr'))
+        logger.error(u"ERROR: %s" % errors.AnsibleError)
 
     self.mgr_storage = enabled.EnabledExtensionManager(
         namespace='cyclosible.plugins.storage',

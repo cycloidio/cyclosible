@@ -27,6 +27,7 @@ def display(msg, task_id, color=None, stderr=False, screen_only=False, log_only=
     if color:
         msg2 = stringc(msg, color) + '\n'
 
+    print msg2
     logger.debug('TASK_ID: {task_id} | MSG: {message}'.format(task_id=task_id, message=msg2))
 
     # Pusblish the message on websocket
@@ -158,7 +159,6 @@ class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
     def on_skipped(self, host, item=None):
         if self.runner.delegate_to:
             host = '%s -> %s' % (host, self.runner.delegate_to)
-
         if constants.DISPLAY_SKIPPED_HOSTS:
             msg = ''
             if item:
