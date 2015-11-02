@@ -122,6 +122,20 @@ class PlaybookTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data.get('name'), data.get('name'))
 
+    def test_v1_update_playbook(self):
+        """
+        Ensure we can update a playbook object.
+        """
+        url = '/api/v1/playbooks/test_playbook/'
+        data = {
+            'name': u'test_playbook',
+            'only_tags': u'deploy,test',
+        }
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.admin_token.key)
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('name'), data.get('name'))
+
     def test_v1_admin_get_playbook(self):
         """
         Ensure we can get a playbook object with admin.
