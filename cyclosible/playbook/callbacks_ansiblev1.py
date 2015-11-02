@@ -158,7 +158,6 @@ class PlaybookRunnerCallbacks(DefaultRunnerCallbacks):
     def on_skipped(self, host, item=None):
         if self.runner.delegate_to:
             host = '%s -> %s' % (host, self.runner.delegate_to)
-
         if constants.DISPLAY_SKIPPED_HOSTS:
             msg = ''
             if item:

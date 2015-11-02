@@ -14,12 +14,14 @@ class Playbook(models.Model):
             ("view_playbook", "Can view the playbook"),
             ("can_override_skip_tags", 'Can override skip_tags'),
             ("can_override_only_tags", 'Can override only_tags'),
+            ("can_override_extra_vars", 'Can override extra_vars'),
             ("can_run_playbook", 'Can run the playbook')
         )
 
     name = models.CharField(max_length=100, unique=True, db_index=True)
     only_tags = models.CharField(max_length=1024, default='', blank=True)
     skip_tags = models.CharField(max_length=1024, default='', blank=True)
+    extra_vars = models.CharField(max_length=1024, default='', blank=True)
     group = models.ForeignKey(Group, null=True)
 
     def __unicode__(self):

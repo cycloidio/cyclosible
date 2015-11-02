@@ -39,7 +39,60 @@ class PlaybookViewSet(viewsets.ModelViewSet):
             if request.user.has_perm('playbook.can_run_playbook', playbook):
                 serializer = RunPlaybookSerializer(data=request.data)
                 if serializer.is_valid():
-                    task = task_run_playbook.delay(playbook_name=playbook.name, user_name=request.user.username)
+                    only_tags = None
+                    skip_tags = None
+                    extra_vars = None
+
+                    # Test permissions
+                    if 'only_tags' in serializer.validated_data:
+                        if request.user.has_perm('playbook.can_override_only_tags', playbook):
+                            only_tags = serializer.validated_data.get('only_tags').split(',')
+                        else:
+                            return Response(
+                                {'status': 'You have not the permission to override tags on this playbook'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        only_tags = playbook.only_tags.split(',')
+
+                    if 'skip_tags' in serializer.validated_data:
+                        if request.user.has_perm('playbook.can_override_skip_tags', playbook):
+                            skip_tags = serializer.validated_data.get('skip_tags').split(',')
+                        else:
+                            return Response(
+                                {'status': 'You have not the permission to override tags on this playbook'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        skip_tags = playbook.skip_tags.split(',')
+
+                    if 'extra_vars' in serializer.validated_data:
+                        if request.user.has_perm('playbook.can_override_extra_vars', playbook):
+                            extra_vars = {}
+                            for var in serializer.validated_data.get('extra_vars').split(','):
+                                extra = var.split('=')
+                                extra_vars[extra[0]] = extra[1]
+                        else:
+                            return Response(
+                                {'status': 'You have not the permission to override extra_vars on this playbook'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        extra_vars = {}
+                        for var in playbook.extra_vars.split(','):
+                            extra = var.split('=')
+                            extra_vars[extra[0]] = extra[1]
+
+                    # Launch the playbook
+                    task = task_run_playbook.delay(
+                        playbook_name=playbook.name,
+                        user_name=request.user.username,
+                        only_tags=only_tags,
+                        skip_tags=skip_tags,
+                        extra_vars=extra_vars
+                    )
+
+                    # Return a response to the api request
                     return Response(
                         {
                             'status': 'Playbook has been launched',
