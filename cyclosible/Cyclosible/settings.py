@@ -181,5 +181,7 @@ S3_BUCKET = "cycloid-cyclosible"
 S3_ACCESS_KEY = "XXXXXXXXXXX"
 S3_SECRET_KEY = "XXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
+os.environ["ANSIBLE_FORCE_COLOR"] = "false"
+
 if 'CYCLOSIBLE_CONFIG' in os.environ:
     execfile(os.environ['CYCLOSIBLE_CONFIG'])
