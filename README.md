@@ -50,16 +50,21 @@ Now, to work in your virtual environment, you can enable it with:
 workon cyclosible27
 ```
 
-### Install required packages
+### Install Cyclosible
 
 You will need to clone this repository. Then you will be able to install the requirements:
 ```bash
-pip install -r requirements.txt
+pip install cyclosible
 ```
-    
+
+When you activate your virtual environment, you should be able to use `cyclosible` script:
+```bash
+which cyclosible
+```
+
 ### Configure the S3 bucket
 
-Actually the S3 bucket is mandatory. In the future we will try to make it optional or provide a plugin system to write your own storage.
+S3 bucket is optional if you enable the S3 storage plugin.
 
 You will need to activate the Website Hosting on your S3 bucket, and apply this permission (where cycloid-cyclosible is the name of your bucket):
 ```json
@@ -80,27 +85,25 @@ You will need to activate the Website Hosting on your S3 bucket, and apply this 
 Configure the application
 -------------------------
 
-For this step, you will have to edit the cyclosible/Cyclosible/settings.py file, and configure these parameters:
-* BROKER_URL = 'redis://localhost:6379/0'
-* CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-* CELERY_TIMEZONE = 'Europe/Paris'
-* SECRET_KEY = 'random string'
-* PLAYBOOK_PATH = "/home/ansible_playbook_path/"
-* S3_BUCKET = "cycloid-cyclosible"
-* S3_ACCESS_KEY = "XXXXXXXXXXX"
-* S3_SECRET_KEY = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+By default, there is some fields pre-configured in the `cyclosible/Cyclosible/settings.py` file.
+
+To make things easier to configure and to not loose your modifications after an upgrade of the package, you can override these settings providing your own settings file.
+
+For this, create an environment variable named `CYCLOSIBLE_CONFIG` and point it to your settings file, for example in `/etc/cyclosible/settings.py`.
+
+Now you just have top copy the content from the settings.py to your custom settings.py.
 
 Before starting the application, we need to create the database. You can also configure the DATABASE settings, by default it will create a SQLite3 database.
 Please refer to the django website (link is above this parameter) to configure it correctly.
 
 Then, apply the schema:
 ```bash
-<cyclosible_path>/manage.py migrate
+CYCLOSIBLE_CONFIG=/etc/cyclosible/settings.py cyclosible migrate
 ```
 
 It will populate the database. Then you need to create a superuser:
 ```bash
-<cyclosible_path>/manage.py createsuperuser
+CYCLOSIBLE_CONFIG=/etc/cyclosible/settings.py cyclosible createsuperuser
 ```
     
 Start the application
@@ -112,17 +115,17 @@ There are 3 applications to start :
 
 - This one will start the webserver (DEV mode):
 ```bash
-<cyclosible_path>/manage.py runserver
+CYCLOSIBLE_CONFIG=/etc/cyclosible/settings.py cyclosible runserver
 ```
 
 - This one will start the worker which will run the playbook:
 ```bash
-<cyclosible_path>/manage.py celery worker
+CYCLOSIBLE_CONFIG=/etc/cyclosible/settings.py cyclosible celery worker
 ```
 
 - This one will check if there are some tasks ton run on crontabs (actually optional):
 ```bash
-<cyclosible_path>/manage.py celery beat
+CYCLOSIBLE_CONFIG=/etc/cyclosible/settings.py cyclosible celery beat
 ```
 
 Now you should be able to connect on the admin interface: `http://<yourip>:8000/admin/`
