@@ -31,6 +31,7 @@ class PlaybookTests(APITestCase):
         assign_perm('playbook.can_override_skip_tags', self.group)
         assign_perm('playbook.can_override_only_tags', self.group)
         assign_perm('playbook.can_override_extra_vars', self.group)
+        assign_perm('playbook.can_override_subset', self.group)
 
         # Create an admin
         self.admin = User.objects.create_superuser('admin_playbook', 'myemail@test.com', 'cyclosible')
@@ -57,6 +58,7 @@ class PlaybookTests(APITestCase):
         assign_perm('playbook.can_override_skip_tags', self.user_authorized, self.playbook)
         assign_perm('playbook.can_override_only_tags', self.user_authorized, self.playbook)
         assign_perm('playbook.can_override_extra_vars', self.user_authorized, self.playbook)
+        assign_perm('playbook.can_override_subset', self.user_authorized, self.playbook)
 
     def test_v1_create_playbook_not_authorized(self):
         """
@@ -161,7 +163,6 @@ class PlaybookTests(APITestCase):
         url = '/api/v1/playbooks/%s/' % self.playbook.name
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_authorized_token.key)
         response = self.client.get(url, format='json')
-        print response.data
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_v1_user_not_authorized_get_playbook(self):
@@ -193,7 +194,8 @@ class PlaybookTests(APITestCase):
             user_name=u'admin_playbook',
             only_tags=[data.get('only_tags')],
             skip_tags=[data.get('skip_tags')],
-            extra_vars={u'env': u'test'}
+            extra_vars={u'env': u'test'},
+            subset=None
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -216,7 +218,8 @@ class PlaybookTests(APITestCase):
             user_name=u'user_authorized_playbook',
             only_tags=[data.get('only_tags')],
             skip_tags=[data.get('skip_tags')],
-            extra_vars={u'env': u'test'}
+            extra_vars={u'env': u'test'},
+            subset=None
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -235,7 +238,8 @@ class PlaybookTests(APITestCase):
             user_name=u'user_authorized_playbook',
             only_tags=[self.playbook.only_tags],
             skip_tags=[self.playbook.skip_tags],
-            extra_vars={u'env': u'test'}
+            extra_vars={u'env': u'test'},
+            subset=None
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -279,7 +283,7 @@ class PlaybookTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         assign_perm('playbook.can_override_skip_tags', self.user_authorized, self.playbook)
 
-        # Testing skip tags permission
+        # Testing extra_vars permission
         remove_perm('playbook.can_override_extra_vars', self.user_authorized, self.playbook)
         data = {
             'extra_vars': u'env=test',
@@ -287,3 +291,12 @@ class PlaybookTests(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         assign_perm('playbook.can_override_extra_vars', self.user_authorized, self.playbook)
+
+        # Testing subset permission
+        remove_perm('playbook.can_override_subset', self.user_authorized, self.playbook)
+        data = {
+            'subset': u'localhost',
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        assign_perm('playbook.can_override_subset', self.user_authorized, self.playbook)

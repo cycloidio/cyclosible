@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAdminUser
 from .permissions import PlaybookPermissions
 from .tasks import run_playbook as task_run_playbook
 from .serializers import RunPlaybookSerializer
+import ansible.constants as C
 
 
 class PlaybookViewSet(viewsets.ModelViewSet):
@@ -68,6 +69,20 @@ class PlaybookViewSet(viewsets.ModelViewSet):
                         if playbook.skip_tags:
                             skip_tags = playbook.skip_tags.split(',')
 
+                    if 'subset' in serializer.validated_data:
+                        if request.user.has_perm('playbook.can_override_subset', playbook):
+                            subset = serializer.validated_data.get('subset')
+                        else:
+                            return Response(
+                                {'status': 'You have not the permission to override subset on this playbook'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        if playbook.subset:
+                            subset = playbook.subset
+                        else:
+                            subset = C.DEFAULT_SUBSET
+
                     if 'extra_vars' in serializer.validated_data:
                         if request.user.has_perm('playbook.can_override_extra_vars', playbook):
                             extra_vars = {}
@@ -92,7 +107,8 @@ class PlaybookViewSet(viewsets.ModelViewSet):
                         user_name=request.user.username,
                         only_tags=only_tags,
                         skip_tags=skip_tags,
-                        extra_vars=extra_vars
+                        extra_vars=extra_vars,
+                        subset=subset
                     )
 
                     # Return a response to the api request

@@ -1,5 +1,5 @@
 __title__ = 'Cyclosible'
-__version__ = '0.2.3'
+__version__ = '0.3'
 __author__ = 'Cycloid'
 __license__ = 'Apache'
 __copyright__ = 'Copyright 2015'

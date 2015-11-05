@@ -40,7 +40,7 @@ class PlaybookSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Playbook
-        fields = ('url', 'name', 'only_tags', 'skip_tags', 'extra_vars', 'group', 'history')
+        fields = ('url', 'name', 'only_tags', 'skip_tags', 'extra_vars', 'subset', 'group', 'history')
         extra_kwargs = {
             'url': {'lookup_field': 'name'}
         }
@@ -59,6 +59,7 @@ class PlaybookSerializer(serializers.HyperlinkedModelSerializer):
         instance.only_tags = validated_data.get('only_tags', instance.only_tags)
         instance.skip_tags = validated_data.get('skip_tags', instance.skip_tags)
         instance.extra_vars = validated_data.get('extra_vars', instance.skip_tags)
+        instance.subset = validated_data.get('subset', instance.skip_tags)
         group_data = validated_data.get('group', {'name': instance.group.name})
         try:
             group = Group.objects.get(name=group_data.get('name'))
@@ -71,7 +72,7 @@ class PlaybookSerializer(serializers.HyperlinkedModelSerializer):
 class RunPlaybookSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Playbook
-        fields = ('url', 'only_tags', 'skip_tags', 'extra_vars')
+        fields = ('url', 'only_tags', 'skip_tags', 'extra_vars', 'subset')
         extra_kwargs = {
             'url': {'lookup_field': 'name'}
         }
