@@ -51,6 +51,7 @@ def pytest_configure():
             'cyclosible.Cyclosible',
             'guardian',
             'cyclosible.playbook',
+            'cyclosible.appversion',
             'rest_framework',
             'rest_framework_swagger',
             'rest_framework.authtoken',
@@ -76,6 +77,8 @@ def pytest_configure():
                 'rest_framework.authentication.SessionAuthentication',
                 'rest_framework.authentication.TokenAuthentication',
             ),
+            'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',)
+
         },
         ANONYMOUS_USER_ID=-1,
         CELERY_ACCEPT_CONTENT=['json'],

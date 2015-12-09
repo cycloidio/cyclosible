@@ -52,6 +52,7 @@ def run_playbook(self, playbook_name, user_name, only_tags=None, skip_tags=None,
     :param extra_vars:
     :return:
     """
+
     history = PlaybookRunHistory.objects.create(
         playbook=Playbook.objects.get(name=playbook_name),
         date_launched=timezone.now(),

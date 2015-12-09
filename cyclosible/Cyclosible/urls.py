@@ -6,7 +6,9 @@ from rest_framework.authtoken import views as authtoken_views
 from .views import (GroupViewSet, UserViewSet)
 from .routers import main_router
 from cyclosible.playbook import urls as playbook_urls
+from cyclosible.appversion import urls as appversion_urls
 assert playbook_urls
+assert appversion_urls
 
 main_router.register(r'groups', GroupViewSet)
 main_router.register(r'users', UserViewSet)

@@ -34,6 +34,7 @@ class PlaybookRunHistory(models.Model):
     class Meta:
         app_label = 'playbook'
 
+    # Todo: add a choice field instead of a varchar for status
     STATUS = (
         ('SUCCESS', 'Success'),
         ('RUNNING', 'Running'),

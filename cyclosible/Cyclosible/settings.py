@@ -37,6 +37,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'guardian',
     'cyclosible.playbook',
+    'cyclosible.appversion',
     'rest_framework',
     'rest_framework_swagger',
     'rest_framework.authtoken',
@@ -107,6 +108,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ),
+    'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',)
 }
 
 # Static files (CSS, JavaScript, Images)
