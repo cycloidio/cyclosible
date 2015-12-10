@@ -20,4 +20,4 @@ class AppVersion(models.Model):
     playbook = models.ForeignKey(Playbook)
 
     def __unicode__(self):
-        return self.version
+        return '-'.join((self.playbook.name, self.application, self.env, self.version))

@@ -12,5 +12,5 @@ class AppVersionViewSet(viewsets.ModelViewSet):
     queryset = AppVersion.objects.all()
     serializer_class = AppVersionSerializer
     filter_backends = (filters.DjangoFilterBackend,)
-    filter_fields = ('env', 'playbook', 'application', 'version')
+    filter_fields = ('env', 'playbook', 'application', 'version', 'deployed')
     permission_classes = (permissions.IsAuthenticated,)
