@@ -58,8 +58,8 @@ class PlaybookSerializer(serializers.HyperlinkedModelSerializer):
         instance.name = validated_data.get('name', instance.name)
         instance.only_tags = validated_data.get('only_tags', instance.only_tags)
         instance.skip_tags = validated_data.get('skip_tags', instance.skip_tags)
-        instance.extra_vars = validated_data.get('extra_vars', instance.skip_tags)
-        instance.subset = validated_data.get('subset', instance.skip_tags)
+        instance.extra_vars = validated_data.get('extra_vars', instance.extra_vars)
+        instance.subset = validated_data.get('subset', instance.subset)
         group_data = validated_data.get('group', {'name': instance.group.name})
         try:
             group = Group.objects.get(name=group_data.get('name'))
