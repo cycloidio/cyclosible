@@ -1,6 +1,5 @@
 djangorestframework
 django<1.9
-mysqlclient
 django-rest-swagger
 colorlog
 ansible
