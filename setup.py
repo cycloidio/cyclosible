@@ -70,8 +70,7 @@ setup(
     package_data=get_package_data('cyclosible'),
     install_requires=[
         'djangorestframework',
-        'django>=1.8',
-        'mysqlclient',
+        'django<1.9',
         'django-rest-swagger',
         'colorlog',
         'ansible',
