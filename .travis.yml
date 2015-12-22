@@ -3,7 +3,7 @@ cache: pip
 
 env:
     - TOX_ENV=py27-flake8
-    - TOX_ENV=py27-django18
+    - TOX_ENV=py27-django19
     - TOX_ENV=py27-djangomaster
 
 sudo: false
